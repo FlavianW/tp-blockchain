@@ -216,6 +216,18 @@ contract BilletChainTest is Test {
         bc.togglePause();
     }
 
+    function testFuzz_plafond_revente(uint256 resalePrice) public {
+        vm.prank(alice);
+        bc.buyTicket{value: prix}();
+
+        uint256 plafond = (prix * 110) / 100;
+        vm.assume(resalePrice > plafond);
+
+        vm.prank(alice);
+        vm.expectRevert();
+        bc.listForResale(0, resalePrice);
+    }
+
     function test_count_listed() public {
         vm.prank(alice);
         bc.buyTicket{value: prix}();
