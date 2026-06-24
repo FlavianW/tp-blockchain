@@ -120,7 +120,7 @@ contract BilletChain {
     function buyTicket() external payable {
         if (_nextTokenId >= totalTickets) revert SoldOut();
         uint256 price = ticketPriceInWei();
-        if (msg.value != price) revert WrongPayment(price, msg.value);
+        if (msg.value < price) revert WrongPayment(price, msg.value);
 
         uint256 tokenId = _nextTokenId++;
         initialPrice[tokenId] = price;
@@ -128,6 +128,11 @@ contract BilletChain {
 
         _mint(msg.sender, tokenId);
         emit TicketPurchased(tokenId, msg.sender, price);
+
+        if (msg.value > price) {
+            (bool ok, ) = msg.sender.call{value: msg.value - price}("");
+            if (!ok) revert TransferFailed();
+        }
     }
 
     // ── Marché secondaire ──────────────────────────────────────────────────────
@@ -145,7 +150,7 @@ contract BilletChain {
     function buyResaleTicket(uint256 tokenId) external payable {
         uint256 price = listingPrice[tokenId];
         if (price == 0) revert NotListed();
-        if (msg.value != price) revert WrongPayment(price, msg.value);
+        if (msg.value < price) revert WrongPayment(price, msg.value);
 
         address seller = ownerOf(tokenId);
         listingPrice[tokenId] = 0;
@@ -155,6 +160,11 @@ contract BilletChain {
 
         _transfer(seller, msg.sender, tokenId);
         emit TicketResold(tokenId, seller, msg.sender, price);
+
+        if (msg.value > price) {
+            (bool ok, ) = msg.sender.call{value: msg.value - price}("");
+            if (!ok) revert TransferFailed();
+        }
     }
 
     // ── Pull payment ───────────────────────────────────────────────────────────

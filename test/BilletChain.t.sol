@@ -68,6 +68,26 @@ contract BilletChainTest is Test {
         bc.buyTicket{value: prix}();
     }
 
+    function test_trop_percu_achat() public {
+        uint256 avant = alice.balance;
+        vm.prank(alice);
+        bc.buyTicket{value: prix + 0.01 ether}();
+        assertEq(alice.balance, avant - prix);
+    }
+
+    function test_trop_percu_revente() public {
+        vm.prank(alice);
+        bc.buyTicket{value: prix}();
+        uint256 prixRevente = (prix * 105) / 100;
+        vm.prank(alice);
+        bc.listForResale(0, prixRevente);
+
+        uint256 avant = bob.balance;
+        vm.prank(bob);
+        bc.buyResaleTicket{value: prixRevente + 0.01 ether}(0);
+        assertEq(bob.balance, avant - prixRevente);
+    }
+
     function test_oracle_perime() public {
         vm.warp(block.timestamp + 2 hours);
         vm.prank(alice);
