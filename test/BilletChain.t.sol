@@ -179,6 +179,43 @@ contract BilletChainTest is Test {
         assertEq(bc.pendingWithdrawals(orga), fee);
     }
 
+    function test_pause_bloque_achat() public {
+        vm.prank(orga);
+        bc.togglePause();
+
+        vm.prank(alice);
+        vm.expectRevert(BilletChain.Paused.selector);
+        bc.buyTicket{value: prix}();
+    }
+
+    function test_pause_bloque_revente() public {
+        vm.prank(alice);
+        bc.buyTicket{value: prix}();
+
+        vm.prank(orga);
+        bc.togglePause();
+
+        vm.prank(alice);
+        vm.expectRevert(BilletChain.Paused.selector);
+        bc.listForResale(0, prix);
+    }
+
+    function test_pause_toggle() public {
+        vm.prank(orga);
+        bc.togglePause();
+        assertEq(bc.paused(), true);
+
+        vm.prank(orga);
+        bc.togglePause();
+        assertEq(bc.paused(), false);
+    }
+
+    function test_pause_only_organizer() public {
+        vm.prank(alice);
+        vm.expectRevert(BilletChain.NotOrganizer.selector);
+        bc.togglePause();
+    }
+
     function test_count_listed() public {
         vm.prank(alice);
         bc.buyTicket{value: prix}();

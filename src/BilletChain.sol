@@ -79,6 +79,7 @@ contract BilletChain {
     uint256 public constant RESALE_FEE_BPS = 500;
 
     uint256 private _nextTokenId;
+    bool public paused;
 
     mapping(uint256 => uint256) public initialPrice;
     mapping(uint256 => uint256) public listingPrice;
@@ -88,6 +89,7 @@ contract BilletChain {
     event TicketListed(uint256 indexed tokenId, address indexed seller, uint256 price);
     event TicketResold(uint256 indexed tokenId, address indexed from, address indexed to, uint256 price);
     event Withdrawn(address indexed recipient, uint256 amount);
+    event PauseToggled(bool paused);
 
     error SoldOut();
     error WrongPayment(uint256 expected, uint256 sent);
@@ -98,12 +100,21 @@ contract BilletChain {
     error StaleOracle();
     error BadOraclePrice();
     error TransferFailed();
+    error Paused();
+    error NotOrganizer();
 
     constructor(uint256 _totalTickets, uint256 _priceEUR, address _priceFeed) {
         organizer = msg.sender;
         totalTickets = _totalTickets;
         priceEUR = _priceEUR;
         priceFeed = IAggregatorV3(_priceFeed);
+    }
+
+    // ── Pause ──────────────────────────────────────────────────────────────────
+    function togglePause() external {
+        if (msg.sender != organizer) revert NotOrganizer();
+        paused = !paused;
+        emit PauseToggled(paused);
     }
 
     // ── Oracle ─────────────────────────────────────────────────────────────────
@@ -118,6 +129,7 @@ contract BilletChain {
 
     // ── Vente initiale ─────────────────────────────────────────────────────────
     function buyTicket() external payable {
+        if (paused) revert Paused();
         if (_nextTokenId >= totalTickets) revert SoldOut();
         uint256 price = ticketPriceInWei();
         if (msg.value < price) revert WrongPayment(price, msg.value);
@@ -137,6 +149,7 @@ contract BilletChain {
 
     // ── Marché secondaire ──────────────────────────────────────────────────────
     function listForResale(uint256 tokenId, uint256 price) external {
+        if (paused) revert Paused();
         if (ownerOf(tokenId) != msg.sender) revert NotTicketOwner();
         uint256 maxPrice = (initialPrice[tokenId] * 110) / 100;
         if (price > maxPrice) revert PriceTooHigh(maxPrice, price);
@@ -148,6 +161,7 @@ contract BilletChain {
     }
 
     function buyResaleTicket(uint256 tokenId) external payable {
+        if (paused) revert Paused();
         uint256 price = listingPrice[tokenId];
         if (price == 0) revert NotListed();
         if (msg.value < price) revert WrongPayment(price, msg.value);
