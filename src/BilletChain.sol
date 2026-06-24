@@ -76,6 +76,7 @@ contract BilletChain {
     uint256 public immutable totalTickets;
     uint256 public immutable priceEUR;
     IAggregatorV3 public immutable priceFeed;
+    uint256 public constant RESALE_FEE_BPS = 500;
 
     uint256 private _nextTokenId;
 
@@ -148,7 +149,9 @@ contract BilletChain {
 
         address seller = ownerOf(tokenId);
         listingPrice[tokenId] = 0;
-        pendingWithdrawals[seller] += price;
+        uint256 fee = (price * RESALE_FEE_BPS) / 10_000;
+        pendingWithdrawals[seller] += price - fee;
+        pendingWithdrawals[organizer] += fee;
 
         _transfer(seller, msg.sender, tokenId);
         emit TicketResold(tokenId, seller, msg.sender, price);

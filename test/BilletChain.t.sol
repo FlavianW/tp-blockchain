@@ -141,6 +141,24 @@ contract BilletChainTest is Test {
         bc.withdraw();
     }
 
+    function test_frais_plateforme() public {
+        vm.prank(alice);
+        bc.buyTicket{value: prix}();
+        uint256 prixRevente = (prix * 105) / 100;
+        vm.prank(alice);
+        bc.listForResale(0, prixRevente);
+
+        vm.prank(orga);
+        bc.withdraw();
+
+        vm.prank(bob);
+        bc.buyResaleTicket{value: prixRevente}(0);
+
+        uint256 fee = (prixRevente * 500) / 10_000;
+        assertEq(bc.pendingWithdrawals(alice), prixRevente - fee);
+        assertEq(bc.pendingWithdrawals(orga), fee);
+    }
+
     function test_count_listed() public {
         vm.prank(alice);
         bc.buyTicket{value: prix}();
